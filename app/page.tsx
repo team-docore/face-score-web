@@ -3,8 +3,8 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
-import Image from 'next/image'
-import * as faceapi from 'face-api.js'
+import Head from 'next/head'
+import GoogleAnalytics from './components/GoogleAnalytics'
 import { useFaceStore } from './store/faceStore'
 import { calculateSymmetry, calculateFaceRatio } from './utils/faceAnalysis'
 import { comments } from './constants/comments'
@@ -15,19 +15,14 @@ import {
   InstapaperShareButton,
 } from 'react-share'
 import html2canvas from 'html2canvas'
-import Head from 'next/head'
-import GoogleAnalytics from './components/GoogleAnalytics'
 
 export default function HomePage() {
   const [image, setImage] = useState<string | null>(null)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [score, setScore] = useState<number | null>(null)
   const [message, setMessage] = useState('')
-  const [loading, setLoading] = useState(false)
   const [gender, setGender] = useState<'male' | 'female' | null>(null)
-  const [showShareModal, setShowShareModal] = useState(false)
   const [language, setLanguage] = useState<'ko' | 'en'>('ko')
-  const imgRef = useRef<HTMLImageElement | null>(null)
   const resultRef = useRef<HTMLDivElement>(null)
   const { setGender: setFaceStoreGender } = useFaceStore()
 
@@ -55,13 +50,6 @@ export default function HomePage() {
   }, [language])
 
   useEffect(() => {
-    const loadModels = async () => {
-      await faceapi.nets.ssdMobilenetv1.loadFromUri('/models')
-      await faceapi.nets.faceLandmark68Net.loadFromUri('/models')
-      await faceapi.nets.faceRecognitionNet.loadFromUri('/models')
-    }
-    loadModels()
-
     // 클립보드 이벤트 리스너 추가
     const handlePaste = async (e: ClipboardEvent) => {
       const items = e.clipboardData?.items
@@ -93,45 +81,22 @@ export default function HomePage() {
   const processImage = async () => {
     if (!uploadedFile) return
 
-    setLoading(true)
     setScore(null)
     setMessage('')
 
     const img = new window.Image()
     img.src = image as string
     img.onload = async () => {
-      const detections = await faceapi
-        .detectSingleFace(img)
-        .withFaceLandmarks()
-      setLoading(false)
-
-      if (detections) {
-        // 얼굴 특징 분석
-        const landmarks = detections.landmarks.positions
-        const jawline = landmarks.slice(0, 17)
-        const leftEye = landmarks.slice(36, 42)
-        const rightEye = landmarks.slice(42, 48)
-        const nose = landmarks.slice(27, 36)
-        const mouth = landmarks.slice(48, 68)
-
-        const symmetryScore = calculateSymmetry(leftEye, rightEye)
-        const faceRatioScore = calculateFaceRatio(jawline, leftEye, rightEye, nose, mouth)
-        const finalScore = Math.floor(symmetryScore * 0.6 + faceRatioScore * 0.4)
-
-        let commentCategory: 'high' | 'mid' | 'low' = 'mid'
-        if (finalScore >= 90) commentCategory = 'high'
-        else if (finalScore < 70) commentCategory = 'low'
-
-        const genderType = gender === 'female' ? 'female' : 'male'
-        const commentList = comments[language][genderType][commentCategory]
-        const randomComment = commentList[Math.floor(Math.random() * commentList.length)]
-        
-        setScore(finalScore)
-        setMessage(randomComment)
-      } else {
-        setScore(null)
-        setMessage('얼굴을 찾을 수 없어요 😢')
-      }
+      // 임의 점수 및 코멘트 생성
+      const finalScore = Math.floor(Math.random() * 70) + 30; // 30~99
+      let commentCategory: 'high' | 'mid' | 'low' = 'mid';
+      if (finalScore >= 90) commentCategory = 'high';
+      else if (finalScore < 70) commentCategory = 'low';
+      const genderType = gender === 'female' ? 'female' : 'male';
+      const commentList = comments[language][genderType][commentCategory];
+      const randomComment = commentList[Math.floor(Math.random() * commentList.length)];
+      setScore(finalScore);
+      setMessage(randomComment);
     }
   }
 
