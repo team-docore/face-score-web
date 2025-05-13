@@ -15,6 +15,7 @@ export default function HomePage() {
   const [score, setScore] = useState<number | null>(null)
   const [message, setMessage] = useState('')
   const [warning, setWarning] = useState('')
+  const [showWarning, setShowWarning] = useState(false)
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState(0)
   const [gender, setGender] = useState<'male' | 'female' | null>(null)
@@ -79,6 +80,18 @@ export default function HomePage() {
     faceapi.nets.ssdMobilenetv1.loadFromUri('/models')
     faceapi.nets.faceLandmark68Net.loadFromUri('/models')
   }, [])
+
+  useEffect(() => {
+    // warning 메시지 자동 사라짐 처리
+    if (warning) {
+      setShowWarning(true)
+      const timer = setTimeout(() => {
+        setShowWarning(false)
+        setWarning('')
+      }, 2500)
+      return () => clearTimeout(timer)
+    }
+  }, [warning])
 
   const processImage = async () => {
     if (!uploadedFile) return
@@ -214,10 +227,23 @@ export default function HomePage() {
     }
   }
 
-  const shareButtonText = {
+  const saveResultButtonText = {
+    ko: '얼평결과 저장하기',
+    en: 'Save Face Score Result'
+  }
+  const shareLinkButtonText = {
     ko: '친구들에게 공유하기',
     en: 'Share with friends'
   }
+  const shareLinkCopyMsg = {
+    ko: '서비스 링크가 클립보드에 복사되었습니다! 친구에게 붙여넣기 하세요.',
+    en: 'Service link copied to clipboard! Paste it to your friends.'
+  }
+  const shareLinkFailMsg = {
+    ko: '클립보드 복사에 실패했습니다. 직접 복사해 주세요.',
+    en: 'Failed to copy link. Please copy manually.'
+  }
+  const serviceUrl = 'https://face-score-web.vercel.app/'
 
   const serviceTitle = {
     ko: '얼평 해줄께',
@@ -274,8 +300,9 @@ export default function HomePage() {
       <GoogleAnalytics />
       <main className="min-h-screen bg-zinc-900 text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-zinc-800 p-6 rounded-2xl shadow-xl text-center space-y-6">
-          {warning && (
-            <div className="mb-2 px-3 py-2 rounded-lg bg-yellow-100 text-yellow-800 font-bold text-center animate-pulse flex items-center justify-center gap-2" style={{minHeight: '48px'}}>
+          {/* 업로드/분석 전: 상단에만 표시 */}
+          {!score && showWarning && warning && (
+            <div className="fixed top-8 left-1/2 z-50 -translate-x-1/2 px-4 py-3 rounded-lg bg-yellow-100 text-yellow-800 font-bold text-center animate-pulse shadow-lg flex items-center justify-center gap-2" style={{minWidth: '260px', maxWidth: '90vw'}}>
               <span role="img" aria-label="경고">⚠️</span> {warning}
             </div>
           )}
@@ -361,6 +388,12 @@ export default function HomePage() {
                 <div className="text-4xl font-bold bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent mt-2">{score}{messages[language].points}</div>
                 <p className="text-zinc-300 text-lg mt-2">{message}</p>
               </div>
+              {/* 결과화면: 버튼 위에만 표시, 오버레이 */}
+              {showWarning && warning && (
+                <div className="fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 px-4 py-3 rounded-lg bg-yellow-100 text-yellow-800 font-bold text-center animate-pulse shadow-lg flex items-center justify-center gap-2" style={{minWidth: '260px', maxWidth: '90vw'}}>
+                  <span role="img" aria-label="경고">⚠️</span> {warning}
+                </div>
+              )}
               <button
                 onClick={async () => {
                   if (!image) return
@@ -392,7 +425,6 @@ export default function HomePage() {
                     canvas.toBlob(async (blob) => {
                       if (!blob) return;
                       if (isMobile()) {
-                        // 모바일: 바로 다운로드(사진앱 저장)
                         const url = URL.createObjectURL(blob)
                         const link = document.createElement('a')
                         link.download = 'face_score.png'
@@ -404,7 +436,6 @@ export default function HomePage() {
                           : '⬇️ Download complete. Long-press the image and select "Save to Photos".')
                         return
                       }
-                      // PC: 클립보드 복사 → 실패 시 다운로드
                       if (blob && navigator.clipboard && navigator.clipboard.write) {
                         try {
                           await navigator.clipboard.write([
@@ -434,7 +465,20 @@ export default function HomePage() {
                 }}
                 className="w-full bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
               >
-                {shareButtonText[language]}
+                {saveResultButtonText[language]}
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(serviceUrl)
+                    setWarning(shareLinkCopyMsg[language])
+                  } catch {
+                    setWarning(shareLinkFailMsg[language])
+                  }
+                }}
+                className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
+              >
+                {shareLinkButtonText[language]}
               </button>
               <button onClick={() => { setImage(null); setUploadedFile(null); setScore(null); setMessage(''); setWarning(''); }} className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors">{messages[language].reanalyze}</button>
             </div>
