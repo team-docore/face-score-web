@@ -362,22 +362,24 @@ export default function HomePage() {
                 <span role="img" aria-label="경고">⚠️</span> {warning}
               </div>
             )}
-            <div className="space-y-2 text-center">
-              <div className="flex justify-end">
-                <button
-                  onClick={() => handleLanguageChange(language === 'ko' ? 'en' : 'ko')}
-                  className="text-sm text-zinc-400 hover:text-white transition-colors px-3 py-1 rounded-full border border-zinc-700 hover:border-zinc-600"
-                >
-                  {messages[language].switchLanguage}
-                </button>
-              </div>
-              <h1 className="text-3xl font-extrabold bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent text-center">
-                {serviceTitle[language]}
-              </h1>
-              <p className="text-lg text-zinc-400 text-center mt-2">
-                {serviceSubtitle[language]}
-              </p>
-            </div>
+            {!sharedView && (
+              <>
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => handleLanguageChange(language === 'ko' ? 'en' : 'ko')}
+                    className="text-sm text-zinc-400 hover:text-white transition-colors px-3 py-1 rounded-full border border-zinc-700 hover:border-zinc-600"
+                  >
+                    {messages[language].switchLanguage}
+                  </button>
+                </div>
+                <h1 className="text-3xl font-extrabold bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent text-center">
+                  {serviceTitle[language]}
+                </h1>
+                <p className="text-lg text-zinc-400 text-center mt-2">
+                  {serviceSubtitle[language]}
+                </p>
+              </>
+            )}
 
             {/* 성별 선택 항상 노출 */}
             <div className="space-y-4 text-center">
@@ -394,7 +396,7 @@ export default function HomePage() {
             </div>
 
             {/* 업로드/분석 전 */}
-            {!image && (
+            {!image && !sharedView && (
               <div className="space-y-6 text-center">
                 <div className="pt-4 border-t border-zinc-700">
                   <p className="text-zinc-300 text-lg mb-4 text-center">{messages[language].uploadPhoto}</p>
