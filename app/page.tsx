@@ -16,6 +16,7 @@ export default function HomePage() {
   const [message, setMessage] = useState('')
   const [warning, setWarning] = useState('')
   const [loading, setLoading] = useState(false)
+  const [progress, setProgress] = useState(0)
   const [gender, setGender] = useState<'male' | 'female' | null>(null)
   const [language, setLanguage] = useState<'ko' | 'en'>('ko')
   const resultRef = useRef<HTMLDivElement>(null)
@@ -84,8 +85,16 @@ export default function HomePage() {
     setScore(null)
     setMessage('')
     setLoading(true)
+    setProgress(0)
+    setWarning('')
     const img = new window.Image()
     img.src = image as string
+    let progressValue = 0
+    const progressTimer = setInterval(() => {
+      progressValue += Math.floor(Math.random() * 5) + 2
+      if (progressValue >= 95) progressValue = 95
+      setProgress(progressValue)
+    }, 30)
     img.onload = async () => {
       // 얼굴 감지
       const detection = await faceapi.detectSingleFace(img).withFaceLandmarks()
@@ -95,7 +104,9 @@ export default function HomePage() {
           : 'Please upload a real face photo, not something weird!')
         setImage(null)
         setUploadedFile(null)
+        setProgress(0)
         setLoading(false)
+        clearInterval(progressTimer)
         return
       }
       // 기존 점수/코멘트 생성
@@ -106,9 +117,14 @@ export default function HomePage() {
       const genderType = gender === 'female' ? 'female' : 'male';
       const commentList = comments[language][genderType][commentCategory];
       const randomComment = commentList[Math.floor(Math.random() * commentList.length)];
-      setScore(finalScore);
-      setMessage(randomComment);
-      setLoading(false);
+      setProgress(100)
+      clearInterval(progressTimer)
+      setTimeout(() => {
+        setScore(finalScore);
+        setMessage(randomComment);
+        setLoading(false);
+        setProgress(0)
+      }, 500)
     }
   }
 
@@ -233,6 +249,12 @@ export default function HomePage() {
     }
   }
 
+  // 모바일 환경 감지 함수
+  function isMobile() {
+    if (typeof window === 'undefined') return false
+    return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  }
+
   return (
     <>
       <Head>
@@ -252,6 +274,9 @@ export default function HomePage() {
       <GoogleAnalytics />
       <main className="min-h-screen bg-zinc-900 text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-zinc-800 p-6 rounded-2xl shadow-xl text-center space-y-6">
+          {warning && (
+            <div className="mb-2 text-red-400 font-bold text-center animate-pulse">{warning}</div>
+          )}
           <div className="space-y-2 text-center">
             <div className="flex justify-end">
               <button
@@ -286,9 +311,6 @@ export default function HomePage() {
           {/* 업로드/분석 전 */}
           {!image && (
             <div className="space-y-6 text-center">
-              {warning && (
-                <div className="mb-2 text-red-400 font-bold text-center animate-pulse">{warning}</div>
-              )}
               <div className="pt-4 border-t border-zinc-700">
                 <p className="text-zinc-300 text-lg mb-4 text-center">{messages[language].uploadPhoto}</p>
                 <label className="block w-full">
@@ -315,9 +337,11 @@ export default function HomePage() {
                 </button>
               </div>
               {loading ? (
-                <div className="flex flex-col items-center justify-center py-6">
-                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-pink-500 border-t-transparent mb-4"></div>
-                  <span className="text-zinc-400 text-lg font-bold">{language === 'ko' ? '분석 중...' : 'Analyzing...'}</span>
+                <div className="flex flex-col items-center justify-center py-6 w-full">
+                  <div className="w-full bg-zinc-700 rounded-full h-4 overflow-hidden mb-2">
+                    <div className="bg-gradient-to-r from-pink-500 to-blue-500 h-4 rounded-full transition-all duration-200" style={{ width: `${progress}%` }}></div>
+                  </div>
+                  <span className="text-zinc-400 text-lg font-bold">{language === 'ko' ? `분석 중... ${progress}%` : `Analyzing... ${progress}%`}</span>
                 </div>
               ) : (
                 <button onClick={processImage} className="w-full bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors">{messages[language].getScore}</button>
@@ -350,47 +374,56 @@ export default function HomePage() {
                     if (!ctx) return
                     ctx.fillStyle = '#18181b'
                     ctx.fillRect(0, 0, width, height)
-                    // 서비스 타이틀
                     ctx.font = 'bold 28px sans-serif'
                     ctx.textAlign = 'center'
                     ctx.fillStyle = '#fff'
                     ctx.fillText(serviceTitle[language], width / 2, 48)
-                    // 이미지
                     const imgW = Math.min(img.width, width - 40)
                     const imgH = Math.min(img.height, 320)
                     ctx.drawImage(img, (width - imgW) / 2, 70, imgW, imgH)
-                    // 점수
                     ctx.font = 'bold 40px sans-serif'
                     ctx.fillStyle = '#a78bfa'
                     ctx.fillText(`${score}${messages[language].points}`, width / 2, imgH + 140)
-                    // 코멘트
                     ctx.font = '20px sans-serif'
                     ctx.fillStyle = '#d1d5db'
                     ctx.fillText(message, width / 2, imgH + 180)
                     canvas.toBlob(async (blob) => {
+                      if (!blob) return;
+                      if (isMobile()) {
+                        // 모바일: 바로 다운로드(사진앱 저장)
+                        const url = URL.createObjectURL(blob)
+                        const link = document.createElement('a')
+                        link.download = 'face_score.png'
+                        link.href = url
+                        link.click()
+                        URL.revokeObjectURL(url)
+                        setWarning(language === 'ko' ? '이미지가 사진앱에 저장되었습니다!' : 'Image saved to your photos!')
+                        return
+                      }
+                      // PC: 클립보드 복사 → 실패 시 다운로드
                       if (blob && navigator.clipboard && navigator.clipboard.write) {
                         try {
                           await navigator.clipboard.write([
                             new window.ClipboardItem({ 'image/png': blob })
                           ])
-                          alert(alertMessages[language].copied)
+                          setWarning(alertMessages[language].copied)
                         } catch (err) {
                           console.error('이미지 복사 오류:', err)
                           const url = URL.createObjectURL(blob)
                           const link = document.createElement('a')
-                          link.download = '얼평_결과.png'
+                          link.download = 'face_score.png'
                           link.href = url
                           link.click()
                           URL.revokeObjectURL(url)
-                          alert(alertMessages[language].download)
+                          setWarning(alertMessages[language].download)
                         }
                       } else {
                         const url = canvas.toDataURL('image/png')
                         const link = document.createElement('a')
-                        link.download = '얼평_결과.png'
+                        link.download = 'face_score.png'
                         link.href = url
                         link.click()
-                        alert(alertMessages[language].notSupported)
+                        setWarning(alertMessages[language].notSupported)
                       }
                     }, 'image/png')
                   }
@@ -399,7 +432,7 @@ export default function HomePage() {
               >
                 {shareButtonText[language]}
               </button>
-              <button onClick={() => { setImage(null); setUploadedFile(null); setScore(null); setMessage(''); }} className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors">{messages[language].reanalyze}</button>
+              <button onClick={() => { setImage(null); setUploadedFile(null); setScore(null); setMessage(''); setWarning(''); }} className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors">{messages[language].reanalyze}</button>
             </div>
           )}
         </div>
