@@ -35,11 +35,15 @@ export default function HomePage() {
       const sharedScore = params.get('score')
       const sharedComment = params.get('comment')
       const sharedLang = params.get('language')
+      const sharedImage = params.get('image')
       
       if (sharedScore && sharedComment) {
         setScore(Number(sharedScore))
         setMessage(decodeURIComponent(sharedComment))
         setLanguage(sharedLang === 'en' ? 'en' : 'ko')
+        if (sharedImage) {
+          setImage(`data:image/jpeg;base64,${sharedImage}`)
+        }
         setSharedView(true)
       }
     }
@@ -142,6 +146,7 @@ export default function HomePage() {
         setProgress(0)
         setLoading(false)
         clearInterval(progressTimer)
+        console.log('얼굴 감지 실패')
         return
       }
       // 기존 점수/코멘트 생성
@@ -205,6 +210,21 @@ export default function HomePage() {
     setWarning('')
     setSharedView(false)
     router.replace('/')
+  }
+
+  const handleShareLink = async () => {
+    if (!image) return
+    
+    // 이미지를 Base64로 인코딩
+    const base64Image = image.split(',')[1]
+    const url = `${serviceUrl}?score=${score}&comment=${encodeURIComponent(message)}&language=${language}&image=${encodeURIComponent(base64Image)}`
+    
+    try {
+      await navigator.clipboard.writeText(url)
+      setWarning(shareLinkCopyMsg[language])
+    } catch {
+      setWarning(shareLinkFailMsg[language])
+    }
   }
 
   const messages = {
@@ -503,15 +523,7 @@ export default function HomePage() {
                     </button>
                     {/* 결과 공유 링크 복사 버튼 */}
                     <button
-                      onClick={async () => {
-                        const url = `${serviceUrl}?score=${score}&comment=${encodeURIComponent(message)}&language=${language}`
-                        try {
-                          await navigator.clipboard.writeText(url)
-                          setWarning(shareLinkCopyMsg[language])
-                        } catch {
-                          setWarning(shareLinkFailMsg[language])
-                        }
-                      }}
+                      onClick={handleShareLink}
                       className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
                     >
                       결과 공유 링크 복사
