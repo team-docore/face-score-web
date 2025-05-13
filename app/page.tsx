@@ -242,7 +242,8 @@ export default function HomePage() {
       getScore: '얼평받기',
       reanalyze: '다시 분석하기',
       points: '점',
-      switchLanguage: 'English'
+      switchLanguage: 'English',
+      shareLink: '결과 공유 링크 복사',
     },
     en: {
       title: 'AI Precision Face Analysis',
@@ -258,7 +259,8 @@ export default function HomePage() {
       getScore: 'Get Score',
       reanalyze: 'Analyze Again',
       points: 'points',
-      switchLanguage: '한국어'
+      switchLanguage: '한국어',
+      shareLink: 'Copy Result Share Link',
     }
   }
 
@@ -284,8 +286,8 @@ export default function HomePage() {
     en: 'Save Face Score Result'
   }
   const shareLinkCopyMsg = {
-    ko: '서비스 링크가 클립보드에 복사되었습니다! 친구에게 붙여넣기 하세요.',
-    en: 'Service link copied to clipboard! Paste it to your friends.'
+    ko: '얼평결과가 복사되었습니다. 친구에게 URL을 전달해주세요',
+    en: 'Face score result link copied. Share the URL with your friends.'
   }
   const shareLinkFailMsg = {
     ko: '클립보드 복사에 실패했습니다. 직접 복사해 주세요.',
@@ -327,6 +329,11 @@ export default function HomePage() {
   function isMobile() {
     if (typeof window === 'undefined') return false
     return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  }
+
+  const tauntMessages = {
+    ko: '네가 해도 내 점수 못 넘긴다 😎',
+    en: `Don't even think you can beat my score 😎`
   }
 
   return (
@@ -433,6 +440,12 @@ export default function HomePage() {
             {score && (
               <div className="space-y-4">
                 <div ref={resultRef} className="bg-zinc-800 p-6 rounded-2xl flex flex-col items-center">
+                  {/* 공유 링크로 접속 시 도발 메시지 */}
+                  {sharedView && (
+                    <div className="mb-3 px-3 py-2 rounded-lg bg-gradient-to-r from-pink-500 to-blue-500 text-white font-bold text-center animate-pulse">
+                      {tauntMessages[language]}
+                    </div>
+                  )}
                   {image && (
                     <Image src={image} alt="분석된 이미지" width={320} height={320} className="w-full max-h-80 object-contain mx-auto rounded-xl mb-4" style={{ maxWidth: 320, maxHeight: 320 }} priority />
                   )}
@@ -526,7 +539,7 @@ export default function HomePage() {
                       onClick={handleShareLink}
                       className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
                     >
-                      결과 공유 링크 복사
+                      {messages[language].shareLink}
                     </button>
                     {shareLinkInput && (
                       <div className="mt-2">
