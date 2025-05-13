@@ -3,7 +3,6 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
-import Image from 'next/image'
 import * as faceapi from 'face-api.js'
 import { useFaceStore } from './store/faceStore'
 import { calculateSymmetry, calculateFaceRatio } from './utils/faceAnalysis'
