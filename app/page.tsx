@@ -6,15 +6,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import Head from 'next/head'
 import GoogleAnalytics from './components/GoogleAnalytics'
 import { useFaceStore } from './store/faceStore'
-import { calculateSymmetry, calculateFaceRatio } from './utils/faceAnalysis'
 import { comments } from './constants/comments'
-import {
-  FacebookShareButton,
-  TwitterShareButton,
-  LineShareButton,
-  InstapaperShareButton,
-} from 'react-share'
-import html2canvas from 'html2canvas'
 
 export default function HomePage() {
   const [image, setImage] = useState<string | null>(null)
