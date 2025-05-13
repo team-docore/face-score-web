@@ -2,13 +2,14 @@
 
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, Suspense } from 'react'
 import Head from 'next/head'
 import GoogleAnalytics from './components/GoogleAnalytics'
 import { useFaceStore } from './store/faceStore'
 import { comments } from './constants/comments'
 import * as faceapi from 'face-api.js'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export default function HomePage() {
   const [image, setImage] = useState<string | null>(null)
@@ -24,35 +25,25 @@ export default function HomePage() {
   const resultRef = useRef<HTMLDivElement>(null)
   const { setGender: setFaceStoreGender } = useFaceStore()
   const router = useRouter()
-  const searchParams = useSearchParams()
-
-  // 쿼리스트링에서 결과 미리보기 값 추출
-  const sharedScore = searchParams.get('score')
-  const sharedComment = searchParams.get('comment')
-  const sharedLang = searchParams.get('language')
-  const isSharedResult = sharedScore && sharedComment
 
   // 공유 결과 미리보기 상태
-  const [sharedView, setSharedView] = useState<boolean>(!!isSharedResult)
-  useEffect(() => {
-    if (isSharedResult) {
-      setScore(Number(sharedScore))
-      setMessage(decodeURIComponent(sharedComment))
-      setLanguage(sharedLang === 'en' ? 'en' : 'ko')
-      setSharedView(true)
-    }
-  }, [sharedScore, sharedComment, sharedLang, isSharedResult])
+  const [sharedView, setSharedView] = useState<boolean>(false)
 
-  // '나도 해보기' 클릭 시 초기화
-  const handleTryMyself = () => {
-    setScore(null)
-    setMessage('')
-    setImage(null)
-    setUploadedFile(null)
-    setWarning('')
-    setSharedView(false)
-    router.replace('/')
-  }
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const sharedScore = params.get('score')
+      const sharedComment = params.get('comment')
+      const sharedLang = params.get('language')
+      
+      if (sharedScore && sharedComment) {
+        setScore(Number(sharedScore))
+        setMessage(decodeURIComponent(sharedComment))
+        setLanguage(sharedLang === 'en' ? 'en' : 'ko')
+        setSharedView(true)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     const savedGender = localStorage.getItem('gender') as 'male' | 'female' | null
@@ -206,6 +197,16 @@ export default function HomePage() {
     }
   }
 
+  const handleTryMyself = () => {
+    setScore(null)
+    setMessage('')
+    setImage(null)
+    setUploadedFile(null)
+    setWarning('')
+    setSharedView(false)
+    router.replace('/')
+  }
+
   const messages = {
     ko: {
       title: 'AI 초정밀 얼평',
@@ -262,10 +263,6 @@ export default function HomePage() {
     ko: '얼평결과 저장하기',
     en: 'Save Face Score Result'
   }
-  const shareLinkButtonText = {
-    ko: '친구들에게 공유하기',
-    en: 'Share with friends'
-  }
   const shareLinkCopyMsg = {
     ko: '서비스 링크가 클립보드에 복사되었습니다! 친구에게 붙여넣기 하세요.',
     en: 'Service link copied to clipboard! Paste it to your friends.'
@@ -314,226 +311,230 @@ export default function HomePage() {
 
   return (
     <>
-      <Head>
-        <title>{serviceTitle[language]}</title>
-        <meta name="description" content={seoDescription[language]} />
-        <meta property="og:title" content={serviceTitle[language]} />
-        <meta property="og:description" content={seoDescription[language]} />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://face-score-web.vercel.app/" />
-        <meta property="og:image" content="https://face-score-web.vercel.app/og-image.png" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content={serviceTitle[language]} />
-        <meta name="twitter:description" content={seoDescription[language]} />
-        <meta name="twitter:image" content="https://face-score-web.vercel.app/og-image.png" />
-        <script type="application/ld+json">{JSON.stringify(schemaData)}</script>
-      </Head>
-      <GoogleAnalytics />
-      <main className="min-h-screen bg-zinc-900 text-white flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-zinc-800 p-6 rounded-2xl shadow-xl text-center space-y-6">
-          {/* 업로드/분석 전: 상단에만 표시 */}
-          {!score && showWarning && warning && (
-            <div className="fixed top-8 left-1/2 z-50 -translate-x-1/2 px-4 py-3 rounded-lg bg-yellow-100 text-yellow-800 font-bold text-center animate-pulse shadow-lg flex items-center justify-center gap-2" style={{minWidth: '260px', maxWidth: '90vw'}}>
-              <span role="img" aria-label="경고">⚠️</span> {warning}
-            </div>
-          )}
-          <div className="space-y-2 text-center">
-            <div className="flex justify-end">
-              <button
-                onClick={() => handleLanguageChange(language === 'ko' ? 'en' : 'ko')}
-                className="text-sm text-zinc-400 hover:text-white transition-colors px-3 py-1 rounded-full border border-zinc-700 hover:border-zinc-600"
-              >
-                {messages[language].switchLanguage}
-              </button>
-            </div>
-            <h1 className="text-3xl font-extrabold bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent text-center">
-              {serviceTitle[language]}
-            </h1>
-            <p className="text-lg text-zinc-400 text-center mt-2">
-              {serviceSubtitle[language]}
-            </p>
-          </div>
-
-          {/* 성별 선택 항상 노출 */}
-          <div className="space-y-4 text-center">
-            <div className="flex items-center justify-center gap-4 text-center">
-              <span className={`text-lg font-medium transition-colors duration-300 ${gender === 'female' ? 'text-pink-500' : 'text-zinc-400'}`}>{messages[language].female}</span>
-              <button
-                onClick={() => handleGenderChange(gender === 'female' ? 'male' : 'female')}
-                className={`relative inline-flex h-10 w-20 items-center rounded-full transition-all duration-300 shadow-lg ${gender === 'female' ? 'bg-gradient-to-r from-pink-500 to-pink-600' : 'bg-gradient-to-r from-blue-500 to-blue-600'}`}
-              >
-                <span className={`inline-block h-8 w-8 transform rounded-full bg-white shadow-md transition-all duration-300 ${gender === 'female' ? 'translate-x-1 hover:translate-x-0.5' : 'translate-x-11 hover:translate-x-[2.75rem]'}`}> <div className="flex h-full w-full items-center justify-center">{gender === 'female' ? (<svg className="h-5 w-5 text-pink-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>) : (<svg className="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>)}</div></span>
-              </button>
-              <span className={`text-lg font-medium transition-colors duration-300 ${gender === 'male' ? 'text-blue-500' : 'text-zinc-400'}`}>{messages[language].male}</span>
-            </div>
-          </div>
-
-          {/* 업로드/분석 전 */}
-          {!image && (
-            <div className="space-y-6 text-center">
-              <div className="pt-4 border-t border-zinc-700">
-                <p className="text-zinc-300 text-lg mb-4 text-center">{messages[language].uploadPhoto}</p>
-                <label className="block w-full">
-                  <div className="border-2 border-dashed border-zinc-600 rounded-xl p-8 hover:border-pink-500 transition-colors cursor-pointer">
-                    <div className="space-y-2 text-center">
-                      <svg className="mx-auto h-12 w-12 text-zinc-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      <p className="text-zinc-400 text-center">{messages[language].clickToUpload}</p>
-                      <p className="text-zinc-500 text-sm text-center">{messages[language].orPaste}</p>
-                    </div>
-                    <input type="file" accept="image/*" onChange={onImageChange} className="hidden" />
-                  </div>
-                </label>
+      <Suspense fallback={<div>Loading...</div>}>
+        <Head>
+          <title>{serviceTitle[language]}</title>
+          <meta name="description" content={seoDescription[language]} />
+          <meta property="og:title" content={serviceTitle[language]} />
+          <meta property="og:description" content={seoDescription[language]} />
+          <meta property="og:type" content="website" />
+          <meta property="og:url" content="https://face-score-web.vercel.app/" />
+          <meta property="og:image" content="https://face-score-web.vercel.app/og-image.png" />
+          <meta name="twitter:card" content="summary_large_image" />
+          <meta name="twitter:title" content={serviceTitle[language]} />
+          <meta name="twitter:description" content={seoDescription[language]} />
+          <meta name="twitter:image" content="https://face-score-web.vercel.app/og-image.png" />
+          <script type="application/ld+json">{JSON.stringify(schemaData)}</script>
+        </Head>
+        <GoogleAnalytics />
+        <main className="min-h-screen bg-zinc-900 text-white flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-zinc-800 p-6 rounded-2xl shadow-xl text-center space-y-6">
+            {/* 업로드/분석 전: 상단에만 표시 */}
+            {!score && showWarning && warning && (
+              <div className="fixed top-8 left-1/2 z-50 -translate-x-1/2 px-4 py-3 rounded-lg bg-yellow-100 text-yellow-800 font-bold text-center animate-pulse shadow-lg flex items-center justify-center gap-2" style={{minWidth: '260px', maxWidth: '90vw'}}>
+                <span role="img" aria-label="경고">⚠️</span> {warning}
               </div>
-            </div>
-          )}
-
-          {/* 업로드 후, 분석 전 미리보기 */}
-          {image && !score && (
-            <div className="space-y-6">
-              <div className="relative">
-                <img src={image} alt="업로드된 이미지" className="w-full max-h-80 object-contain mx-auto rounded-xl shadow-lg" style={{ maxWidth: 320, maxHeight: 320 }} />
-                <button onClick={() => { setImage(null); setUploadedFile(null); setScore(null); setMessage(''); setWarning(''); }} className="absolute top-2 right-2 bg-zinc-800/80 backdrop-blur-sm hover:bg-zinc-700/90 text-zinc-400 hover:text-white p-2 rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:rotate-90 transform border border-zinc-700/50">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+            )}
+            <div className="space-y-2 text-center">
+              <div className="flex justify-end">
+                <button
+                  onClick={() => handleLanguageChange(language === 'ko' ? 'en' : 'ko')}
+                  className="text-sm text-zinc-400 hover:text-white transition-colors px-3 py-1 rounded-full border border-zinc-700 hover:border-zinc-600"
+                >
+                  {messages[language].switchLanguage}
                 </button>
               </div>
-              {loading ? (
-                <div className="flex flex-col items-center justify-center py-6 w-full">
-                  <div className="w-full bg-zinc-700 rounded-full h-4 overflow-hidden mb-2">
-                    <div className="bg-gradient-to-r from-pink-500 to-blue-500 h-4 rounded-full transition-all duration-200" style={{ width: `${progress}%` }}></div>
-                  </div>
-                  <span className="text-zinc-400 text-lg font-bold">{language === 'ko' ? `분석 중... ${progress}%` : `Analyzing... ${progress}%`}</span>
-                </div>
-              ) : (
-                <button onClick={processImage} className="w-full bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors">{messages[language].getScore}</button>
-              )}
+              <h1 className="text-3xl font-extrabold bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent text-center">
+                {serviceTitle[language]}
+              </h1>
+              <p className="text-lg text-zinc-400 text-center mt-2">
+                {serviceSubtitle[language]}
+              </p>
             </div>
-          )}
 
-          {/* 분석 결과 카드 */}
-          {score && (
-            <div className="space-y-4">
-              <div ref={resultRef} className="bg-zinc-800 p-6 rounded-2xl flex flex-col items-center">
-                {image && (
-                  <img src={image} alt="분석된 이미지" className="w-full max-h-80 object-contain mx-auto rounded-xl mb-4" style={{ maxWidth: 320, maxHeight: 320 }} />
-                )}
-                <div className="text-4xl font-bold bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent mt-2">{score}{messages[language].points}</div>
-                <p className="text-zinc-300 text-lg mt-2">{message}</p>
+            {/* 성별 선택 항상 노출 */}
+            <div className="space-y-4 text-center">
+              <div className="flex items-center justify-center gap-4 text-center">
+                <span className={`text-lg font-medium transition-colors duration-300 ${gender === 'female' ? 'text-pink-500' : 'text-zinc-400'}`}>{messages[language].female}</span>
+                <button
+                  onClick={() => handleGenderChange(gender === 'female' ? 'male' : 'female')}
+                  className={`relative inline-flex h-10 w-20 items-center rounded-full transition-all duration-300 shadow-lg ${gender === 'female' ? 'bg-gradient-to-r from-pink-500 to-pink-600' : 'bg-gradient-to-r from-blue-500 to-blue-600'}`}
+                >
+                  <span className={`inline-block h-8 w-8 transform rounded-full bg-white shadow-md transition-all duration-300 ${gender === 'female' ? 'translate-x-1 hover:translate-x-0.5' : 'translate-x-11 hover:translate-x-[2.75rem]'}`}> <div className="flex h-full w-full items-center justify-center">{gender === 'female' ? (<svg className="h-5 w-5 text-pink-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>) : (<svg className="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg>)}</div></span>
+                </button>
+                <span className={`text-lg font-medium transition-colors duration-300 ${gender === 'male' ? 'text-blue-500' : 'text-zinc-400'}`}>{messages[language].male}</span>
               </div>
-              {/* 버튼 바로 위에 warning 메시지 */}
-              {showWarning && warning && (
-                <div className="mb-2 px-3 py-2 rounded-lg bg-yellow-100 text-yellow-800 font-bold text-center animate-pulse flex items-center justify-center gap-2" style={{minHeight: '48px'}}>
-                  <span role="img" aria-label="경고">⚠️</span> {warning}
+            </div>
+
+            {/* 업로드/분석 전 */}
+            {!image && (
+              <div className="space-y-6 text-center">
+                <div className="pt-4 border-t border-zinc-700">
+                  <p className="text-zinc-300 text-lg mb-4 text-center">{messages[language].uploadPhoto}</p>
+                  <label className="block w-full">
+                    <div className="border-2 border-dashed border-zinc-600 rounded-xl p-8 hover:border-pink-500 transition-colors cursor-pointer">
+                      <div className="space-y-2 text-center">
+                        <svg className="mx-auto h-12 w-12 text-zinc-400" stroke="currentColor" fill="none" viewBox="0 0 48 48"><path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                        <p className="text-zinc-400 text-center">{messages[language].clickToUpload}</p>
+                        <p className="text-zinc-500 text-sm text-center">{messages[language].orPaste}</p>
+                      </div>
+                      <input type="file" accept="image/*" onChange={onImageChange} className="hidden" />
+                    </div>
+                  </label>
                 </div>
-              )}
-              {/* 결과 저장 버튼 */}
-              {!sharedView && (
-                <>
-                  <button
-                    onClick={async () => {
-                      if (!image) return
-                      const img = new window.Image()
-                      img.src = image
-                      img.onload = async () => {
-                        const width = 400
-                        const height = 580
-                        const canvas = document.createElement('canvas')
-                        canvas.width = width
-                        canvas.height = height
-                        const ctx = canvas.getContext('2d')
-                        if (!ctx) return
-                        ctx.fillStyle = '#18181b'
-                        ctx.fillRect(0, 0, width, height)
-                        ctx.font = 'bold 28px sans-serif'
-                        ctx.textAlign = 'center'
-                        ctx.fillStyle = '#fff'
-                        ctx.fillText(serviceTitle[language], width / 2, 48)
-                        const imgW = Math.min(img.width, width - 40)
-                        const imgH = Math.min(img.height, 320)
-                        ctx.drawImage(img, (width - imgW) / 2, 70, imgW, imgH)
-                        ctx.font = 'bold 40px sans-serif'
-                        ctx.fillStyle = '#a78bfa'
-                        ctx.fillText(`${score}${messages[language].points}`, width / 2, imgH + 140)
-                        ctx.font = '20px sans-serif'
-                        ctx.fillStyle = '#d1d5db'
-                        ctx.fillText(message, width / 2, imgH + 180)
-                        canvas.toBlob(async (blob) => {
-                          if (!blob) return;
-                          if (isMobile()) {
-                            const url = URL.createObjectURL(blob)
-                            const link = document.createElement('a')
-                            link.download = 'face_score.png'
-                            link.href = url
-                            link.click()
-                            URL.revokeObjectURL(url)
-                            setWarning(language === 'ko'
-                              ? '⬇️ 다운로드가 완료되었습니다. 파일을 길게 눌러 "사진에 저장"을 선택하세요.'
-                              : '⬇️ Download complete. Long-press the image and select "Save to Photos".')
-                            return
-                          }
-                          if (blob && navigator.clipboard && navigator.clipboard.write) {
-                            try {
-                              await navigator.clipboard.write([
-                                new window.ClipboardItem({ 'image/png': blob })
-                              ])
-                              setWarning(alertMessages[language].copied)
-                            } catch (err) {
-                              console.error('이미지 복사 오류:', err)
+              </div>
+            )}
+
+            {/* 업로드 후, 분석 전 미리보기 */}
+            {image && !score && (
+              <div className="space-y-6">
+                <div className="relative">
+                  {image && (
+                    <Image src={image} alt="업로드된 이미지" width={320} height={320} className="w-full max-h-80 object-contain mx-auto rounded-xl shadow-lg" style={{ maxWidth: 320, maxHeight: 320 }} priority />
+                  )}
+                  <button onClick={() => { setImage(null); setUploadedFile(null); setScore(null); setMessage(''); setWarning(''); }} className="absolute top-2 right-2 bg-zinc-800/80 backdrop-blur-sm hover:bg-zinc-700/90 text-zinc-400 hover:text-white p-2 rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:rotate-90 transform border border-zinc-700/50">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center py-6 w-full">
+                    <div className="w-full bg-zinc-700 rounded-full h-4 overflow-hidden mb-2">
+                      <div className="bg-gradient-to-r from-pink-500 to-blue-500 h-4 rounded-full transition-all duration-200" style={{ width: `${progress}%` }}></div>
+                    </div>
+                    <span className="text-zinc-400 text-lg font-bold">{language === 'ko' ? `분석 중... ${progress}%` : `Analyzing... ${progress}%`}</span>
+                  </div>
+                ) : (
+                  <button onClick={processImage} className="w-full bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors">{messages[language].getScore}</button>
+                )}
+              </div>
+            )}
+
+            {/* 분석 결과 카드 */}
+            {score && (
+              <div className="space-y-4">
+                <div ref={resultRef} className="bg-zinc-800 p-6 rounded-2xl flex flex-col items-center">
+                  {image && (
+                    <Image src={image} alt="분석된 이미지" width={320} height={320} className="w-full max-h-80 object-contain mx-auto rounded-xl mb-4" style={{ maxWidth: 320, maxHeight: 320 }} priority />
+                  )}
+                  <div className="text-4xl font-bold bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent mt-2">{score}{messages[language].points}</div>
+                  <p className="text-zinc-300 text-lg mt-2">{message}</p>
+                </div>
+                {/* 버튼 바로 위에 warning 메시지 */}
+                {showWarning && warning && (
+                  <div className="mb-2 px-3 py-2 rounded-lg bg-yellow-100 text-yellow-800 font-bold text-center animate-pulse flex items-center justify-center gap-2" style={{minHeight: '48px'}}>
+                    <span role="img" aria-label="경고">⚠️</span> {warning}
+                  </div>
+                )}
+                {/* 결과 저장 버튼 */}
+                {!sharedView && (
+                  <>
+                    <button
+                      onClick={async () => {
+                        if (!image) return
+                        const img = new window.Image()
+                        img.src = image
+                        img.onload = async () => {
+                          const width = 400
+                          const height = 580
+                          const canvas = document.createElement('canvas')
+                          canvas.width = width
+                          canvas.height = height
+                          const ctx = canvas.getContext('2d')
+                          if (!ctx) return
+                          ctx.fillStyle = '#18181b'
+                          ctx.fillRect(0, 0, width, height)
+                          ctx.font = 'bold 28px sans-serif'
+                          ctx.textAlign = 'center'
+                          ctx.fillStyle = '#fff'
+                          ctx.fillText(serviceTitle[language], width / 2, 48)
+                          const imgW = Math.min(img.width, width - 40)
+                          const imgH = Math.min(img.height, 320)
+                          ctx.drawImage(img, (width - imgW) / 2, 70, imgW, imgH)
+                          ctx.font = 'bold 40px sans-serif'
+                          ctx.fillStyle = '#a78bfa'
+                          ctx.fillText(`${score}${messages[language].points}`, width / 2, imgH + 140)
+                          ctx.font = '20px sans-serif'
+                          ctx.fillStyle = '#d1d5db'
+                          ctx.fillText(message, width / 2, imgH + 180)
+                          canvas.toBlob(async (blob) => {
+                            if (!blob) return;
+                            if (isMobile()) {
                               const url = URL.createObjectURL(blob)
                               const link = document.createElement('a')
                               link.download = 'face_score.png'
                               link.href = url
                               link.click()
                               URL.revokeObjectURL(url)
-                              setWarning(alertMessages[language].download)
+                              setWarning(language === 'ko'
+                                ? '⬇️ 다운로드가 완료되었습니다. 파일을 길게 눌러 "사진에 저장"을 선택하세요.'
+                                : '⬇️ Download complete. Long-press the image and select "Save to Photos".')
+                              return
                             }
-                          } else {
-                            const url = canvas.toDataURL('image/png')
-                            const link = document.createElement('a')
-                            link.download = 'face_score.png'
-                            link.href = url
-                            link.click()
-                            setWarning(alertMessages[language].notSupported)
-                          }
-                        }, 'image/png')
-                      }
-                    }}
+                            if (blob && navigator.clipboard && navigator.clipboard.write) {
+                              try {
+                                await navigator.clipboard.write([
+                                  new window.ClipboardItem({ 'image/png': blob })
+                                ])
+                                setWarning(alertMessages[language].copied)
+                              } catch (err) {
+                                console.error('이미지 복사 오류:', err)
+                                const url = URL.createObjectURL(blob)
+                                const link = document.createElement('a')
+                                link.download = 'face_score.png'
+                                link.href = url
+                                link.click()
+                                URL.revokeObjectURL(url)
+                                setWarning(alertMessages[language].download)
+                              }
+                            } else {
+                              const url = canvas.toDataURL('image/png')
+                              const link = document.createElement('a')
+                              link.download = 'face_score.png'
+                              link.href = url
+                              link.click()
+                              setWarning(alertMessages[language].notSupported)
+                            }
+                          }, 'image/png')
+                        }
+                      }}
+                      className="w-full bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
+                    >
+                      {saveResultButtonText[language]}
+                    </button>
+                    {/* 결과 공유 링크 복사 버튼 */}
+                    <button
+                      onClick={async () => {
+                        const url = `${serviceUrl}?score=${score}&comment=${encodeURIComponent(message)}&language=${language}`
+                        try {
+                          await navigator.clipboard.writeText(url)
+                          setWarning(shareLinkCopyMsg[language])
+                        } catch {
+                          setWarning(shareLinkFailMsg[language])
+                        }
+                      }}
+                      className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
+                    >
+                      결과 공유 링크 복사
+                    </button>
+                  </>
+                )}
+                {/* '나도 해보기' 버튼 (공유 결과 미리보기일 때만) */}
+                {sharedView && (
+                  <button
+                    onClick={handleTryMyself}
                     className="w-full bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
                   >
-                    {saveResultButtonText[language]}
+                    {language === 'ko' ? '나도 해보기' : 'Try it yourself'}
                   </button>
-                  {/* 결과 공유 링크 복사 버튼 */}
-                  <button
-                    onClick={async () => {
-                      const url = `${serviceUrl}?score=${score}&comment=${encodeURIComponent(message)}&language=${language}`
-                      try {
-                        await navigator.clipboard.writeText(url)
-                        setWarning(shareLinkCopyMsg[language])
-                      } catch {
-                        setWarning(shareLinkFailMsg[language])
-                      }
-                    }}
-                    className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
-                  >
-                    결과 공유 링크 복사
-                  </button>
-                </>
-              )}
-              {/* '나도 해보기' 버튼 (공유 결과 미리보기일 때만) */}
-              {sharedView && (
-                <button
-                  onClick={handleTryMyself}
-                  className="w-full bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
-                >
-                  {language === 'ko' ? '나도 해보기' : 'Try it yourself'}
-                </button>
-              )}
-              {!sharedView && (
-                <button onClick={() => { setImage(null); setUploadedFile(null); setScore(null); setMessage(''); setWarning(''); }} className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors">{messages[language].reanalyze}</button>
-              )}
-            </div>
-          )}
-        </div>
-      </main>
+                )}
+                {!sharedView && (
+                  <button onClick={() => { setImage(null); setUploadedFile(null); setScore(null); setMessage(''); setWarning(''); }} className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors">{messages[language].reanalyze}</button>
+                )}
+              </div>
+            )}
+          </div>
+        </main>
+      </Suspense>
     </>
   )
 }
