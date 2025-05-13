@@ -32,6 +32,38 @@ export default function HomePage() {
   const [shareLinkInput, setShareLinkInput] = useState('')
   const shareLinkInputRef = useRef<HTMLInputElement>(null)
 
+  // 세부 평가 항목 및 피드백(한/영)
+  const detailLabels = {
+    ko: {
+      symmetry: '대칭성',
+      skin: '피부톤',
+      smile: '미소',
+      lighting: '조명',
+      pose: '포즈',
+      summary: 'AI 분석 요약',
+      tip: '개선 팁'
+    },
+    en: {
+      symmetry: 'Symmetry',
+      skin: 'Skin Tone',
+      smile: 'Smile',
+      lighting: 'Lighting',
+      pose: 'Pose',
+      summary: 'AI Summary',
+      tip: 'Improvement Tip'
+    }
+  }
+  // 세부 평가 점수/피드백 생성 (임시 랜덤)
+  const [details, setDetails] = useState({
+    symmetry: 0,
+    skin: 0,
+    smile: 0,
+    lighting: 0,
+    pose: 0,
+    summary: '',
+    tip: ''
+  })
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
@@ -116,6 +148,30 @@ export default function HomePage() {
       return () => clearTimeout(timer)
     }
   }, [warning])
+
+  useEffect(() => {
+    if (score && image) {
+      // 임시 랜덤 점수/피드백 (실제 AI 연동 전까지)
+      const s = Math.floor(Math.random() * 21) + 80 // 80~100
+      const sk = Math.floor(Math.random() * 21) + 70 // 70~90
+      const sm = Math.floor(Math.random() * 21) + 70
+      const l = Math.floor(Math.random() * 21) + 60
+      const p = Math.floor(Math.random() * 21) + 80
+      setDetails({
+        symmetry: s,
+        skin: sk,
+        smile: sm,
+        lighting: l,
+        pose: p,
+        summary: language === 'ko'
+          ? '눈이 크고, 미소가 자연스러우며, 얼굴 대칭이 우수합니다.'
+          : 'Big eyes, natural smile, and excellent facial symmetry.',
+        tip: language === 'ko'
+          ? '조명을 조금 더 밝게 해보세요.'
+          : 'Try using brighter lighting.'
+      })
+    }
+  }, [score, image, language])
 
   const processImage = async () => {
     if (!uploadedFile) return
@@ -453,6 +509,25 @@ export default function HomePage() {
                   )}
                   <div className="text-4xl font-bold bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent mt-2">{score}{messages[language].points}</div>
                   <p className="text-zinc-300 text-lg mt-2">{message}</p>
+                  {/* 세부 평가 UI */}
+                  <div className="w-full mt-4 bg-zinc-700/40 rounded-xl p-4 text-left space-y-2">
+                    <div className="font-bold text-zinc-200 mb-1">{language === 'ko' ? '세부 평가' : 'Detailed Evaluation'}</div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>{detailLabels[language].symmetry}: <span className="font-bold text-pink-400">{details.symmetry}</span></div>
+                      <div>{detailLabels[language].skin}: <span className="font-bold text-blue-400">{details.skin}</span></div>
+                      <div>{detailLabels[language].smile}: <span className="font-bold text-yellow-400">{details.smile}</span></div>
+                      <div>{detailLabels[language].lighting}: <span className="font-bold text-green-400">{details.lighting}</span></div>
+                      <div>{detailLabels[language].pose}: <span className="font-bold text-purple-400">{details.pose}</span></div>
+                    </div>
+                    <div className="mt-2">
+                      <div className="text-base font-bold text-zinc-300">{detailLabels[language].summary}:</div>
+                      <div className="text-base text-zinc-300 mt-1">{details.summary}</div>
+                    </div>
+                    <div className="mt-2">
+                      <div className="text-base font-bold text-zinc-400">{detailLabels[language].tip}:</div>
+                      <div className="text-base text-zinc-400 mt-1">{details.tip}</div>
+                    </div>
+                  </div>
                 </div>
                 {/* 버튼 바로 위에 warning 메시지 */}
                 {showWarning && warning && (
