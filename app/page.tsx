@@ -8,6 +8,7 @@ import GoogleAnalytics from './components/GoogleAnalytics'
 import { useFaceStore } from './store/faceStore'
 import { comments } from './constants/comments'
 import * as faceapi from 'face-api.js'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 export default function HomePage() {
   const [image, setImage] = useState<string | null>(null)
@@ -22,6 +23,36 @@ export default function HomePage() {
   const [language, setLanguage] = useState<'ko' | 'en'>('ko')
   const resultRef = useRef<HTMLDivElement>(null)
   const { setGender: setFaceStoreGender } = useFaceStore()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  // 쿼리스트링에서 결과 미리보기 값 추출
+  const sharedScore = searchParams.get('score')
+  const sharedComment = searchParams.get('comment')
+  const sharedLang = searchParams.get('language')
+  const isSharedResult = sharedScore && sharedComment
+
+  // 공유 결과 미리보기 상태
+  const [sharedView, setSharedView] = useState<boolean>(!!isSharedResult)
+  useEffect(() => {
+    if (isSharedResult) {
+      setScore(Number(sharedScore))
+      setMessage(decodeURIComponent(sharedComment))
+      setLanguage(sharedLang === 'en' ? 'en' : 'ko')
+      setSharedView(true)
+    }
+  }, [sharedScore, sharedComment, sharedLang, isSharedResult])
+
+  // '나도 해보기' 클릭 시 초기화
+  const handleTryMyself = () => {
+    setScore(null)
+    setMessage('')
+    setImage(null)
+    setUploadedFile(null)
+    setWarning('')
+    setSharedView(false)
+    router.replace('/')
+  }
 
   useEffect(() => {
     const savedGender = localStorage.getItem('gender') as 'male' | 'female' | null
@@ -388,99 +419,117 @@ export default function HomePage() {
                 <div className="text-4xl font-bold bg-gradient-to-r from-pink-500 to-blue-500 bg-clip-text text-transparent mt-2">{score}{messages[language].points}</div>
                 <p className="text-zinc-300 text-lg mt-2">{message}</p>
               </div>
-              {/* 결과화면: 버튼 위에만 표시, 오버레이 */}
+              {/* 버튼 바로 위에 warning 메시지 */}
               {showWarning && warning && (
-                <div className="fixed top-1/2 left-1/2 z-50 -translate-x-1/2 -translate-y-1/2 px-4 py-3 rounded-lg bg-yellow-100 text-yellow-800 font-bold text-center animate-pulse shadow-lg flex items-center justify-center gap-2" style={{minWidth: '260px', maxWidth: '90vw'}}>
+                <div className="mb-2 px-3 py-2 rounded-lg bg-yellow-100 text-yellow-800 font-bold text-center animate-pulse flex items-center justify-center gap-2" style={{minHeight: '48px'}}>
                   <span role="img" aria-label="경고">⚠️</span> {warning}
                 </div>
               )}
-              <button
-                onClick={async () => {
-                  if (!image) return
-                  const img = new window.Image()
-                  img.src = image
-                  img.onload = async () => {
-                    const width = 400
-                    const height = 580
-                    const canvas = document.createElement('canvas')
-                    canvas.width = width
-                    canvas.height = height
-                    const ctx = canvas.getContext('2d')
-                    if (!ctx) return
-                    ctx.fillStyle = '#18181b'
-                    ctx.fillRect(0, 0, width, height)
-                    ctx.font = 'bold 28px sans-serif'
-                    ctx.textAlign = 'center'
-                    ctx.fillStyle = '#fff'
-                    ctx.fillText(serviceTitle[language], width / 2, 48)
-                    const imgW = Math.min(img.width, width - 40)
-                    const imgH = Math.min(img.height, 320)
-                    ctx.drawImage(img, (width - imgW) / 2, 70, imgW, imgH)
-                    ctx.font = 'bold 40px sans-serif'
-                    ctx.fillStyle = '#a78bfa'
-                    ctx.fillText(`${score}${messages[language].points}`, width / 2, imgH + 140)
-                    ctx.font = '20px sans-serif'
-                    ctx.fillStyle = '#d1d5db'
-                    ctx.fillText(message, width / 2, imgH + 180)
-                    canvas.toBlob(async (blob) => {
-                      if (!blob) return;
-                      if (isMobile()) {
-                        const url = URL.createObjectURL(blob)
-                        const link = document.createElement('a')
-                        link.download = 'face_score.png'
-                        link.href = url
-                        link.click()
-                        URL.revokeObjectURL(url)
-                        setWarning(language === 'ko'
-                          ? '⬇️ 다운로드가 완료되었습니다. 파일을 길게 눌러 "사진에 저장"을 선택하세요.'
-                          : '⬇️ Download complete. Long-press the image and select "Save to Photos".')
-                        return
+              {/* 결과 저장 버튼 */}
+              {!sharedView && (
+                <>
+                  <button
+                    onClick={async () => {
+                      if (!image) return
+                      const img = new window.Image()
+                      img.src = image
+                      img.onload = async () => {
+                        const width = 400
+                        const height = 580
+                        const canvas = document.createElement('canvas')
+                        canvas.width = width
+                        canvas.height = height
+                        const ctx = canvas.getContext('2d')
+                        if (!ctx) return
+                        ctx.fillStyle = '#18181b'
+                        ctx.fillRect(0, 0, width, height)
+                        ctx.font = 'bold 28px sans-serif'
+                        ctx.textAlign = 'center'
+                        ctx.fillStyle = '#fff'
+                        ctx.fillText(serviceTitle[language], width / 2, 48)
+                        const imgW = Math.min(img.width, width - 40)
+                        const imgH = Math.min(img.height, 320)
+                        ctx.drawImage(img, (width - imgW) / 2, 70, imgW, imgH)
+                        ctx.font = 'bold 40px sans-serif'
+                        ctx.fillStyle = '#a78bfa'
+                        ctx.fillText(`${score}${messages[language].points}`, width / 2, imgH + 140)
+                        ctx.font = '20px sans-serif'
+                        ctx.fillStyle = '#d1d5db'
+                        ctx.fillText(message, width / 2, imgH + 180)
+                        canvas.toBlob(async (blob) => {
+                          if (!blob) return;
+                          if (isMobile()) {
+                            const url = URL.createObjectURL(blob)
+                            const link = document.createElement('a')
+                            link.download = 'face_score.png'
+                            link.href = url
+                            link.click()
+                            URL.revokeObjectURL(url)
+                            setWarning(language === 'ko'
+                              ? '⬇️ 다운로드가 완료되었습니다. 파일을 길게 눌러 "사진에 저장"을 선택하세요.'
+                              : '⬇️ Download complete. Long-press the image and select "Save to Photos".')
+                            return
+                          }
+                          if (blob && navigator.clipboard && navigator.clipboard.write) {
+                            try {
+                              await navigator.clipboard.write([
+                                new window.ClipboardItem({ 'image/png': blob })
+                              ])
+                              setWarning(alertMessages[language].copied)
+                            } catch (err) {
+                              console.error('이미지 복사 오류:', err)
+                              const url = URL.createObjectURL(blob)
+                              const link = document.createElement('a')
+                              link.download = 'face_score.png'
+                              link.href = url
+                              link.click()
+                              URL.revokeObjectURL(url)
+                              setWarning(alertMessages[language].download)
+                            }
+                          } else {
+                            const url = canvas.toDataURL('image/png')
+                            const link = document.createElement('a')
+                            link.download = 'face_score.png'
+                            link.href = url
+                            link.click()
+                            setWarning(alertMessages[language].notSupported)
+                          }
+                        }, 'image/png')
                       }
-                      if (blob && navigator.clipboard && navigator.clipboard.write) {
-                        try {
-                          await navigator.clipboard.write([
-                            new window.ClipboardItem({ 'image/png': blob })
-                          ])
-                          setWarning(alertMessages[language].copied)
-                        } catch (err) {
-                          console.error('이미지 복사 오류:', err)
-                          const url = URL.createObjectURL(blob)
-                          const link = document.createElement('a')
-                          link.download = 'face_score.png'
-                          link.href = url
-                          link.click()
-                          URL.revokeObjectURL(url)
-                          setWarning(alertMessages[language].download)
-                        }
-                      } else {
-                        const url = canvas.toDataURL('image/png')
-                        const link = document.createElement('a')
-                        link.download = 'face_score.png'
-                        link.href = url
-                        link.click()
-                        setWarning(alertMessages[language].notSupported)
+                    }}
+                    className="w-full bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
+                  >
+                    {saveResultButtonText[language]}
+                  </button>
+                  {/* 결과 공유 링크 복사 버튼 */}
+                  <button
+                    onClick={async () => {
+                      const url = `${serviceUrl}?score=${score}&comment=${encodeURIComponent(message)}&language=${language}`
+                      try {
+                        await navigator.clipboard.writeText(url)
+                        setWarning(shareLinkCopyMsg[language])
+                      } catch {
+                        setWarning(shareLinkFailMsg[language])
                       }
-                    }, 'image/png')
-                  }
-                }}
-                className="w-full bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
-              >
-                {saveResultButtonText[language]}
-              </button>
-              <button
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(serviceUrl)
-                    setWarning(shareLinkCopyMsg[language])
-                  } catch {
-                    setWarning(shareLinkFailMsg[language])
-                  }
-                }}
-                className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
-              >
-                {shareLinkButtonText[language]}
-              </button>
-              <button onClick={() => { setImage(null); setUploadedFile(null); setScore(null); setMessage(''); setWarning(''); }} className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors">{messages[language].reanalyze}</button>
+                    }}
+                    className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
+                  >
+                    결과 공유 링크 복사
+                  </button>
+                </>
+              )}
+              {/* '나도 해보기' 버튼 (공유 결과 미리보기일 때만) */}
+              {sharedView && (
+                <button
+                  onClick={handleTryMyself}
+                  className="w-full bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors"
+                >
+                  {language === 'ko' ? '나도 해보기' : 'Try it yourself'}
+                </button>
+              )}
+              {!sharedView && (
+                <button onClick={() => { setImage(null); setUploadedFile(null); setScore(null); setMessage(''); setWarning(''); }} className="mt-2 w-full bg-zinc-700 hover:bg-zinc-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors">{messages[language].reanalyze}</button>
+              )}
             </div>
           )}
         </div>
