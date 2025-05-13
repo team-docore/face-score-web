@@ -413,6 +413,7 @@ export default function HomePage() {
       <Suspense fallback={<div>Loading...</div>}>
         <Head>
           <title>{serviceTitle[language]}</title>
+          <meta name="google-adsense-account" content="ca-pub-5059503509737581"></meta>
           <meta name="description" content={seoDescription[language]} />
           <meta property="og:title" content={serviceTitle[language]} />
           <meta property="og:description" content={seoDescription[language]} />
