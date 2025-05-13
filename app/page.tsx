@@ -339,6 +339,7 @@ export default function HomePage() {
                           ])
                           alert(alertMessages[language].copied)
                         } catch (err) {
+                          console.error('이미지 복사 오류:', err)
                           const url = URL.createObjectURL(blob)
                           const link = document.createElement('a')
                           link.download = '얼평_결과.png'
