@@ -519,14 +519,14 @@ export default function HomePage() {
                       <div>{detailLabels[language].lighting}: <span className="font-bold text-green-400">{details.lighting}</span></div>
                       <div>{detailLabels[language].pose}: <span className="font-bold text-purple-400">{details.pose}</span></div>
                     </div>
-                    <div className="mt-2">
-                      <div className="text-base font-bold text-zinc-300">{detailLabels[language].summary}:</div>
-                      <div className="text-base text-zinc-300 mt-1">{details.summary}</div>
+                    {/* <div className="text-sm text-gray-600">
+                      <p className="font-medium mb-2">AI 분석 요약:</p>
+                      <p>{analysis.summary}</p>
                     </div>
-                    <div className="mt-2">
-                      <div className="text-base font-bold text-zinc-400">{detailLabels[language].tip}:</div>
-                      <div className="text-base text-zinc-400 mt-1">{details.tip}</div>
-                    </div>
+                    <div className="text-sm text-gray-600">
+                      <p className="font-medium mb-2">개선 팁:</p>
+                      <p>{analysis.tips}</p>
+                    </div> */}
                   </div>
                 </div>
                 {/* 버튼 바로 위에 warning 메시지 */}
