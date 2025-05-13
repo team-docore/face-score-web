@@ -138,29 +138,6 @@ export default function HomePage() {
     reader.readAsDataURL(file)
   }
 
-  const handlePaste = async (e: ClipboardEvent) => {
-    const items = e.clipboardData?.items
-    if (!items) return
-
-    for (const item of items) {
-      if (item.type.indexOf('image') !== -1) {
-        const file = item.getAsFile()
-        if (!file) continue
-
-        const reader = new FileReader()
-        reader.onload = () => {
-          const dataUrl = reader.result as string
-          setImage(dataUrl)
-          setUploadedFile(file)
-          setScore(null)
-          setMessage('')
-        }
-        reader.readAsDataURL(file)
-        break
-      }
-    }
-  }
-
   const handleGenderChange = (newGender: 'male' | 'female') => {
     setGender(newGender)
     setFaceStoreGender(newGender)
