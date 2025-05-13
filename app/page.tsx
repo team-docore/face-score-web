@@ -70,10 +70,25 @@ export default function HomePage() {
       const sharedScore = params.get('score')
       const sharedComment = params.get('comment')
       const sharedLang = params.get('language')
+      // 세부 수치 복원
+      const symmetry = Number(params.get('symmetry') || 0)
+      const skin = Number(params.get('skin') || 0)
+      const smile = Number(params.get('smile') || 0)
+      const lighting = Number(params.get('lighting') || 0)
+      const pose = Number(params.get('pose') || 0)
       if (sharedScore && sharedComment) {
         setScore(Number(sharedScore))
         setMessage(decodeURIComponent(sharedComment))
         setLanguage(sharedLang === 'en' ? 'en' : 'ko')
+        setDetails({
+          symmetry,
+          skin,
+          smile,
+          lighting,
+          pose,
+          summary: '',
+          tip: ''
+        })
         setSharedView(true)
       }
     }
@@ -268,7 +283,8 @@ export default function HomePage() {
 
   const handleShareLink = async () => {
     if (!image) return
-    const url = `${serviceUrl}?score=${score}&comment=${encodeURIComponent(message)}&language=${language}`
+    const url = `${serviceUrl}?score=${score}&comment=${encodeURIComponent(message)}&language=${language}` +
+      `&symmetry=${details.symmetry}&skin=${details.skin}&smile=${details.smile}&lighting=${details.lighting}&pose=${details.pose}`
     try {
       await navigator.clipboard.writeText(url)
       setWarning(shareLinkCopyMsg[language])
