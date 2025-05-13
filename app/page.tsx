@@ -424,6 +424,7 @@ export default function HomePage() {
           <meta name="twitter:title" content={serviceTitle[language]} />
           <meta name="twitter:description" content={seoDescription[language]} />
           <meta name="twitter:image" content="https://face-score-web.vercel.app/og-image.png" />
+          <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5059503509737581" crossOrigin="anonymous"></script>
           <script type="application/ld+json">{JSON.stringify(schemaData)}</script>
         </Head>
         <GoogleAnalytics />
