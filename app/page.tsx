@@ -7,12 +7,14 @@ import Head from 'next/head'
 import GoogleAnalytics from './components/GoogleAnalytics'
 import { useFaceStore } from './store/faceStore'
 import { comments } from './constants/comments'
+import * as faceapi from 'face-api.js'
 
 export default function HomePage() {
   const [image, setImage] = useState<string | null>(null)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [score, setScore] = useState<number | null>(null)
   const [message, setMessage] = useState('')
+  const [warning, setWarning] = useState('')
   const [gender, setGender] = useState<'male' | 'female' | null>(null)
   const [language, setLanguage] = useState<'ko' | 'en'>('ko')
   const resultRef = useRef<HTMLDivElement>(null)
@@ -70,16 +72,31 @@ export default function HomePage() {
     return () => document.removeEventListener('paste', handlePaste)
   }, [])
 
+  useEffect(() => {
+    // face-api 모델 로드
+    faceapi.nets.ssdMobilenetv1.loadFromUri('/models')
+    faceapi.nets.faceLandmark68Net.loadFromUri('/models')
+  }, [])
+
   const processImage = async () => {
     if (!uploadedFile) return
-
     setScore(null)
     setMessage('')
-
     const img = new window.Image()
     img.src = image as string
     img.onload = async () => {
-      // 임의 점수 및 코멘트 생성
+      // 얼굴 감지
+      const detection = await faceapi.detectSingleFace(img).withFaceLandmarks()
+      if (!detection) {
+        setScore(null)
+        setWarning(language === 'ko'
+          ? '얼굴사진을 올리세요. 이상한 사진 말고'
+          : 'Please upload a real face photo, not something weird!')
+        setImage(null)
+        setUploadedFile(null)
+        return
+      }
+      // 기존 점수/코멘트 생성
       const finalScore = Math.floor(Math.random() * 70) + 30; // 30~99
       let commentCategory: 'high' | 'mid' | 'low' = 'mid';
       if (finalScore >= 90) commentCategory = 'high';
@@ -103,6 +120,7 @@ export default function HomePage() {
       setUploadedFile(file)
       setScore(null)
       setMessage('')
+      setWarning('')
     }
     reader.readAsDataURL(file)
   }
@@ -265,6 +283,9 @@ export default function HomePage() {
           {/* 업로드/분석 전 */}
           {!image && (
             <div className="space-y-6 text-center">
+              {warning && (
+                <div className="mb-2 text-red-400 font-bold text-center animate-pulse">{warning}</div>
+              )}
               <div className="pt-4 border-t border-zinc-700">
                 <p className="text-zinc-300 text-lg mb-4 text-center">{messages[language].uploadPhoto}</p>
                 <label className="block w-full">
