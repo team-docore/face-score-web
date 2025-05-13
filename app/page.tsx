@@ -29,21 +29,19 @@ export default function HomePage() {
   // 공유 결과 미리보기 상태
   const [sharedView, setSharedView] = useState<boolean>(false)
 
+  const [shareLinkInput, setShareLinkInput] = useState('')
+  const shareLinkInputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const sharedScore = params.get('score')
       const sharedComment = params.get('comment')
       const sharedLang = params.get('language')
-      const sharedImage = params.get('image')
-      
       if (sharedScore && sharedComment) {
         setScore(Number(sharedScore))
         setMessage(decodeURIComponent(sharedComment))
         setLanguage(sharedLang === 'en' ? 'en' : 'ko')
-        if (sharedImage) {
-          setImage(`data:image/jpeg;base64,${sharedImage}`)
-        }
         setSharedView(true)
       }
     }
@@ -214,16 +212,18 @@ export default function HomePage() {
 
   const handleShareLink = async () => {
     if (!image) return
-    
-    // 이미지를 Base64로 인코딩
-    const base64Image = image.split(',')[1]
-    const url = `${serviceUrl}?score=${score}&comment=${encodeURIComponent(message)}&language=${language}&image=${encodeURIComponent(base64Image)}`
-    
+    const url = `${serviceUrl}?score=${score}&comment=${encodeURIComponent(message)}&language=${language}`
     try {
       await navigator.clipboard.writeText(url)
       setWarning(shareLinkCopyMsg[language])
+      setShareLinkInput('')
     } catch {
       setWarning(shareLinkFailMsg[language])
+      setShareLinkInput(url)
+      setTimeout(() => {
+        shareLinkInputRef.current?.focus()
+        shareLinkInputRef.current?.select()
+      }, 100)
     }
   }
 
@@ -528,6 +528,18 @@ export default function HomePage() {
                     >
                       결과 공유 링크 복사
                     </button>
+                    {shareLinkInput && (
+                      <div className="mt-2">
+                        <input
+                          ref={shareLinkInputRef}
+                          value={shareLinkInput}
+                          readOnly
+                          className="w-full px-3 py-2 rounded border border-zinc-400 text-zinc-900 bg-white text-sm font-mono"
+                          onFocus={e => e.target.select()}
+                        />
+                        <div className="text-xs text-zinc-300 mt-1">복사 안 될 경우 위 링크를 길게 눌러 복사하세요.</div>
+                      </div>
+                    )}
                   </>
                 )}
                 {/* '나도 해보기' 버튼 (공유 결과 미리보기일 때만) */}
