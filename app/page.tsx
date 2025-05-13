@@ -275,7 +275,9 @@ export default function HomePage() {
       <main className="min-h-screen bg-zinc-900 text-white flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-zinc-800 p-6 rounded-2xl shadow-xl text-center space-y-6">
           {warning && (
-            <div className="mb-2 text-red-400 font-bold text-center animate-pulse">{warning}</div>
+            <div className="mb-2 px-3 py-2 rounded-lg bg-yellow-100 text-yellow-800 font-bold text-center animate-pulse flex items-center justify-center gap-2" style={{minHeight: '48px'}}>
+              <span role="img" aria-label="경고">⚠️</span> {warning}
+            </div>
           )}
           <div className="space-y-2 text-center">
             <div className="flex justify-end">
@@ -397,7 +399,9 @@ export default function HomePage() {
                         link.href = url
                         link.click()
                         URL.revokeObjectURL(url)
-                        setWarning(language === 'ko' ? '이미지가 사진앱에 저장되었습니다!' : 'Image saved to your photos!')
+                        setWarning(language === 'ko'
+                          ? '⬇️ 다운로드가 완료되었습니다. 파일을 길게 눌러 "사진에 저장"을 선택하세요.'
+                          : '⬇️ Download complete. Long-press the image and select "Save to Photos".')
                         return
                       }
                       // PC: 클립보드 복사 → 실패 시 다운로드
