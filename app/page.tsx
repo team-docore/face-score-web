@@ -10,8 +10,11 @@ import { comments } from './constants/comments'
 import * as faceapi from 'face-api.js'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
+import SplashScreen from './components/SplashScreen'
 
 export default function HomePage() {
+  // 모든 useState, useRef, useEffect 등은 컴포넌트 최상단에서 항상 호출
+  const [showSplash, setShowSplash] = useState(true)
   const [image, setImage] = useState<string | null>(null)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [score, setScore] = useState<number | null>(null)
@@ -25,12 +28,18 @@ export default function HomePage() {
   const resultRef = useRef<HTMLDivElement>(null)
   const { setGender: setFaceStoreGender } = useFaceStore()
   const router = useRouter()
-
-  // 공유 결과 미리보기 상태
   const [sharedView, setSharedView] = useState<boolean>(false)
-
   const [shareLinkInput, setShareLinkInput] = useState('')
   const shareLinkInputRef = useRef<HTMLInputElement>(null)
+  const [details, setDetails] = useState({
+    symmetry: 0,
+    skin: 0,
+    smile: 0,
+    lighting: 0,
+    pose: 0,
+    summary: '',
+    tip: ''
+  })
 
   // 세부 평가 항목 및 피드백(한/영)
   const detailLabels = {
@@ -53,16 +62,11 @@ export default function HomePage() {
       tip: 'Improvement Tip'
     }
   }
-  // 세부 평가 점수/피드백 생성 (임시 랜덤)
-  const [details, setDetails] = useState({
-    symmetry: 0,
-    skin: 0,
-    smile: 0,
-    lighting: 0,
-    pose: 0,
-    summary: '',
-    tip: ''
-  })
+
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 1800)
+    return () => clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -187,6 +191,9 @@ export default function HomePage() {
       })
     }
   }, [score, image, language])
+
+  // SplashScreen 조건부 렌더링은 return에서만!
+  if (showSplash) return <SplashScreen language={language} />
 
   const processImage = async () => {
     if (!uploadedFile) return
