@@ -3,6 +3,7 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
+import Image from 'next/image'
 import * as faceapi from 'face-api.js'
 import { useFaceStore } from './store/faceStore'
 import { calculateSymmetry, calculateFaceRatio } from './utils/faceAnalysis'
@@ -26,7 +27,7 @@ export default function HomePage() {
     return 'ko'
   })
   const imgRef = useRef<HTMLImageElement | null>(null)
-  const { gender: faceStoreGender, setGender: setFaceStoreGender } = useFaceStore()
+  const { setGender: setFaceStoreGender } = useFaceStore()
 
   useEffect(() => {
     const savedGender = localStorage.getItem('gender') as 'male' | 'female' | null
@@ -83,9 +84,7 @@ export default function HomePage() {
     setScore(null)
     setMessage('')
 
-    await new Promise((r) => setTimeout(r, 500))
-
-    const img = new Image()
+    const img = new window.Image()
     img.src = image as string
     img.onload = async () => {
       const detections = await faceapi
@@ -275,6 +274,46 @@ export default function HomePage() {
           </div>
         ) : (
           <div className="space-y-6">
+            {!score && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-center gap-4">
+                  <span className={`text-lg font-medium transition-colors duration-300 ${gender === 'female' ? 'text-pink-500' : 'text-zinc-400'}`}>
+                    {messages[language].female}
+                  </span>
+                  <button
+                    onClick={() => handleGenderChange(gender === 'female' ? 'male' : 'female')}
+                    className={`relative inline-flex h-10 w-20 items-center rounded-full transition-all duration-300 shadow-lg ${
+                      gender === 'female' 
+                        ? 'bg-gradient-to-r from-pink-500 to-pink-600' 
+                        : 'bg-gradient-to-r from-blue-500 to-blue-600'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-8 w-8 transform rounded-full bg-white shadow-md transition-all duration-300 ${
+                        gender === 'female' 
+                          ? 'translate-x-1 hover:translate-x-0.5' 
+                          : 'translate-x-11 hover:translate-x-[2.75rem]'
+                      }`}
+                    >
+                      <div className="flex h-full w-full items-center justify-center">
+                        {gender === 'female' ? (
+                          <svg className="h-5 w-5 text-pink-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                          </svg>
+                        )}
+                      </div>
+                    </span>
+                  </button>
+                  <span className={`text-lg font-medium transition-colors duration-300 ${gender === 'male' ? 'text-blue-500' : 'text-zinc-400'}`}>
+                    {messages[language].male}
+                  </span>
+                </div>
+              </div>
+            )}
             {loading ? (
               <div className="space-y-4">
                 <div className="animate-spin rounded-full h-12 w-12 border-4 border-pink-500 border-t-transparent mx-auto"></div>
@@ -284,26 +323,27 @@ export default function HomePage() {
               <>
                 {image && (
                   <div className="relative">
-                    <img
-                      ref={imgRef}
-                      src={image}
-                      alt="업로드된 이미지"
-                      className="w-full max-h-80 object-contain mx-auto rounded-xl shadow-lg"
-                    />
-                    <button
-                      onClick={() => {
-                        setImage(null)
-                        setUploadedFile(null)
-                        setScore(null)
-                        setMessage('')
-                      }}
-                      className="absolute top-2 right-2 bg-zinc-800/80 backdrop-blur-sm hover:bg-zinc-700/90 text-zinc-400 hover:text-white p-2 rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:rotate-90 transform border border-zinc-700/50"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    ref={imgRef}
+                    src={image}
+                    alt="업로드된 이미지"
+                    className="w-full max-h-80 object-contain mx-auto rounded-xl shadow-lg"
+                  />
+                  <button
+                    onClick={() => {
+                      setImage(null)
+                      setUploadedFile(null)
+                      setScore(null)
+                      setMessage('')
+                    }}
+                    className="absolute top-2 right-2 bg-zinc-800/80 backdrop-blur-sm hover:bg-zinc-700/90 text-zinc-400 hover:text-white p-2 rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:rotate-90 transform border border-zinc-700/50"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
                 )}
                 {!score && !loading && (
                   <button
