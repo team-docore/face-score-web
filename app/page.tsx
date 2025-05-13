@@ -15,6 +15,7 @@ export default function HomePage() {
   const [score, setScore] = useState<number | null>(null)
   const [message, setMessage] = useState('')
   const [warning, setWarning] = useState('')
+  const [loading, setLoading] = useState(false)
   const [gender, setGender] = useState<'male' | 'female' | null>(null)
   const [language, setLanguage] = useState<'ko' | 'en'>('ko')
   const resultRef = useRef<HTMLDivElement>(null)
@@ -82,18 +83,19 @@ export default function HomePage() {
     if (!uploadedFile) return
     setScore(null)
     setMessage('')
+    setLoading(true)
     const img = new window.Image()
     img.src = image as string
     img.onload = async () => {
       // 얼굴 감지
       const detection = await faceapi.detectSingleFace(img).withFaceLandmarks()
       if (!detection) {
-        setScore(null)
         setWarning(language === 'ko'
           ? '얼굴사진을 올리세요. 이상한 사진 말고'
           : 'Please upload a real face photo, not something weird!')
         setImage(null)
         setUploadedFile(null)
+        setLoading(false)
         return
       }
       // 기존 점수/코멘트 생성
@@ -106,6 +108,7 @@ export default function HomePage() {
       const randomComment = commentList[Math.floor(Math.random() * commentList.length)];
       setScore(finalScore);
       setMessage(randomComment);
+      setLoading(false);
     }
   }
 
@@ -307,11 +310,18 @@ export default function HomePage() {
             <div className="space-y-6">
               <div className="relative">
                 <img src={image} alt="업로드된 이미지" className="w-full max-h-80 object-contain mx-auto rounded-xl shadow-lg" style={{ maxWidth: 320, maxHeight: 320 }} />
-                <button onClick={() => { setImage(null); setUploadedFile(null); setScore(null); setMessage(''); }} className="absolute top-2 right-2 bg-zinc-800/80 backdrop-blur-sm hover:bg-zinc-700/90 text-zinc-400 hover:text-white p-2 rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:rotate-90 transform border border-zinc-700/50">
+                <button onClick={() => { setImage(null); setUploadedFile(null); setScore(null); setMessage(''); setWarning(''); }} className="absolute top-2 right-2 bg-zinc-800/80 backdrop-blur-sm hover:bg-zinc-700/90 text-zinc-400 hover:text-white p-2 rounded-full shadow-lg transition-all duration-300 hover:scale-110 hover:rotate-90 transform border border-zinc-700/50">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
               </div>
-              <button onClick={processImage} className="w-full bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors">{messages[language].getScore}</button>
+              {loading ? (
+                <div className="flex flex-col items-center justify-center py-6">
+                  <div className="animate-spin rounded-full h-12 w-12 border-4 border-pink-500 border-t-transparent mb-4"></div>
+                  <span className="text-zinc-400 text-lg font-bold">{language === 'ko' ? '분석 중...' : 'Analyzing...'}</span>
+                </div>
+              ) : (
+                <button onClick={processImage} className="w-full bg-gradient-to-r from-pink-500 to-blue-500 hover:from-pink-600 hover:to-blue-600 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition-colors">{messages[language].getScore}</button>
+              )}
             </div>
           )}
 
